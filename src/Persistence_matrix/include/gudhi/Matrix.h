@@ -1028,6 +1028,23 @@ class Matrix
    */
   void remove_maximal_cell(ID_index cellIndex, const std::vector<ID_index>& columnsToSwap);
   /**
+   * @brief Only available if
+   * @ref PersistenceMatrixOptions::has_removable_columns, @ref PersistenceMatrixOptions::has_vine_removable_rows are
+   * true. Assumes that the cell is maximal in the current complex and removes it using the algorithm from @cite sirup.
+   * The maximality of the cell is not verified. Also updates the barcode if it was computed.
+   *
+   * This method ensures that the representative cycles in the updated matrix decomposition \f$ RU = D \f$ are the same
+   * as if the standard algorithm were applied to the updated filtration. The analogous method @ref remove_maximal_cell
+   * uses the algorithm from @cite vineyards to do the same thing. Note that the barcode will be the same for both
+   * methods, but the updated matrices \f$ R,U \f$ may not be the same.
+   *
+   * See also @ref remove_maximal_cell.
+   *
+   * @param columnIndex If @ref boundarymatrix "boundary matrix", @ref MatIdx index of the cell to remove, otherwise the
+   * @ref IDIdx index.
+   */
+  void remove_maximal_cell_sirup(Index columnIndex);
+  /**
    * @brief Removes the last inserted column/cell from the matrix.
    * If the matrix is @ref mp_matrices "non basic", @ref PersistenceMatrixOptions::has_removable_columns has to be true
    * for the method to be available. Additionally, if the matrix is a @ref chainmatrix "chain matrix", either
@@ -1829,6 +1846,11 @@ inline void Matrix<PersistenceMatrixOptions>::remove_maximal_cell(ID_index cellI
                 "'remove_maximal_cell(ID_index,const std::vector<Index>&)' is not available for the chosen options.");
 
   matrix_.remove_maximal_cell(cellIndex, columnsToSwap);
+}
+
+template <class PersistenceMatrixOptions>
+inline void Matrix<PersistenceMatrixOptions>::remove_maximal_cell_sirup(Index columnIndex) {
+  matrix_.remove_maximal_cell_sirup(columnIndex);
 }
 
 template <class PersistenceMatrixOptions>

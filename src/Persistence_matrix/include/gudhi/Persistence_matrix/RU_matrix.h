@@ -252,13 +252,10 @@ class RU_matrix : public Master_matrix::RU_pairing_option,
   /**
    * @brief Only available if @ref PersistenceMatrixOptions::has_removable_columns, @ref
    * PersistenceMatrixOptions::has_removable_rows, and @ref PersistenceMatrixOptions::has_row_access are all true.
-   * Assumes that the cell is maximal in the current complex and removes it using the algorithm from @cite sirup. This
-   * ensures that the representative cycles in the updated matrix decomposition \f$ RU = D \f$ are the same as if the
-   * standard algorithm were applied to the updated filtration. The maximality of the cell is not verified. Also updates
-   * the barcode if it is stored.
+   * Assumes that the cell is maximal in the current complex and removes it using the algorithm from @cite sirup. The
+   * maximality of the cell is not verified. Also updates the barcode if it is stored.
    *
-   * See also @ref remove_maximal_cell, which use the algorithm from @cite vineyards to do the same thing. Note that the
-   * barcode will be the same for both methods, but the updated matrices \f$ R,U \f$ may not.
+   * See also @ref remove_maximal_cell, which uses the algorithm from @cite vineyards.
    *
    * @param columnIndex @ref MatIdx index of the cell to remove.
    */
