@@ -634,11 +634,26 @@ inline void RU_matrix<Master_matrix>::remove_maximal_cell(Index columnIndex)
 
 template <class Master_matrix>
 inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(Index columnIndex) {
-  static_assert(Master_matrix::Option_list::has_removable_columns && Master_matrix::Option_list::has_removable_rows &&
-                    Master_matrix::Option_list::has_row_access,
+  static_assert(Master_matrix::Option_list::has_removable_columns && Master_matrix::Option_list::has_removable_rows,
                 "'remove_maximal_cell_sirup' is not implemented for the chosen options.");
 
-  // TODO: code
+  // get nonzero entries in row of V that will be removed (=same column of U)
+  const typename Master_matrix::Column& A = get_column(columnIndex, false);
+
+  // construct vector of earliest-highest pivot columns
+  std::vector<Index> B = {columnIndex};
+  auto it = A.begin();
+  it++;
+  while (it != A.end() && !is_zero_column(it->get_row_index())) {
+    Index b = get_pivot(it->get_row_index());
+    if (b < get_pivot(B.back())) {
+      B.push_back(it->get_row_index());
+    }
+    it++;
+  }
+  if (it != A.end()) {
+    B.push_back(it->get_row_index());
+  }
 }
 
 template <class Master_matrix>
