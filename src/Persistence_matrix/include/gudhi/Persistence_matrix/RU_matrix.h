@@ -250,6 +250,20 @@ class RU_matrix : public Master_matrix::RU_pairing_option,
    */
   void remove_maximal_cell(Index columnIndex);
   /**
+   * @brief Only available if @ref PersistenceMatrixOptions::has_removable_columns, @ref
+   * PersistenceMatrixOptions::has_removable_rows, and @ref PersistenceMatrixOptions::has_row_access are all true.
+   * Assumes that the cell is maximal in the current complex and removes it using the algorithm from @cite sirup. This
+   * ensures that the representative cycles in the updated matrix decomposition \f$ RU = D \f$ are the same as if the
+   * standard algorithm were applied to the updated filtration. The maximality of the cell is not verified. Also updates
+   * the barcode if it is stored.
+   *
+   * See also @ref remove_maximal_cell, which use the algorithm from @cite vineyards to do the same thing. Note that the
+   * barcode will be the same for both methods, but the updated matrices \f$ R,U \f$ may not.
+   *
+   * @param columnIndex @ref MatIdx index of the cell to remove.
+   */
+  void remove_maximal_cell_sirup(Index columnIndex);
+  /**
    * @brief Only available if @ref PersistenceMatrixOptions::has_removable_columns is true.
    * Removes the last cell in the filtration from the matrix and updates the barcode if it is stored.
    *
@@ -616,6 +630,15 @@ inline void RU_matrix<Master_matrix>::remove_maximal_cell(Index columnIndex)
   }
 
   remove_last();
+}
+
+template <class Master_matrix>
+inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(Index columnIndex) {
+  static_assert(Master_matrix::Option_list::has_removable_columns && Master_matrix::Option_list::has_removable_rows &&
+                    Master_matrix::Option_list::has_row_access,
+                "'remove_maximal_cell_sirup' is not implemented for the chosen options.");
+
+  // TODO: code
 }
 
 template <class Master_matrix>
