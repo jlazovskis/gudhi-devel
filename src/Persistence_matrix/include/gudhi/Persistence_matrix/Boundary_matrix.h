@@ -227,6 +227,13 @@ class Boundary_matrix : public Master_matrix::Matrix_dimension_option,
    * @param rowIndex @ref rowindex "Row index" of the empty row.
    */
   void erase_empty_row(Index rowIndex);
+  /**
+   * @brief Assumes that the column is empty and removes it.
+   * 
+   * @param columnIndex @ref columnIndex "Column index" of the empty column.
+   */
+  void erase_empty_column(Index columnIndex);
+
 
   /**
    * @brief Returns the current number of columns in the matrix.
@@ -596,6 +603,32 @@ inline void Boundary_matrix<Master_matrix>::erase_empty_row(Index rowIndex)
   if constexpr (Master_matrix::Option_list::has_row_access && Master_matrix::Option_list::has_removable_rows) {
     RA_opt::erase_empty_row(rowID);
   }
+}
+
+template <class Master_matrix>
+inline void Boundary_matrix<Master_matrix>::erase_empty_column(Index columnIndex) {
+  zero_column(columnIndex);
+  if constexpr (Master_matrix::Option_list::has_map_column_container) {
+    auto it = matrix_.find(columnIndex);
+    for ( int i=columnIndex+1; i<matrix_.size(); ++i ){
+      auto it_swap = matrix_.find(i);
+      swap(it->second,it_swap->second);
+      it = it_swap;
+    }
+    matrix_.erase(it);
+  }
+  else {
+  matrix_.erase(matrix_.begin()+columnIndex);
+  }
+  --nextInsertIndex_;
+  
+  //} else {
+  // auto it=matrix_.begin()+columnIndex; 
+  // for (int i=columnIndex+1; i<get_number_of_columns(); i++){
+  //   std::iter_swap(it,it++);
+  // }
+  // matrix_.pop_back();
+  // auto ind = remove_last();
 }
 
 template <class Master_matrix>

@@ -218,6 +218,12 @@ class Base_matrix : public Master_matrix::template Base_swap_option<Base_matrix<
    * @param rowIndex @ref rowindex "Row index" of the empty row.
    */
   void erase_empty_row(Index rowIndex);
+  /**
+   * @brief Assumes that the column is empty and removes it.
+   * 
+   * @param columnIndex @ref columnIndex "Column index" of the empty column.
+   */
+  void erase_empty_column(Index columnIndex);
 
   /**
    * @brief Returns the current number of columns in the matrix.
@@ -520,6 +526,17 @@ inline void Base_matrix<Master_matrix>::erase_empty_row(Index rowIndex)
     Swap_opt::_erase_row(rowIndex);
   }
 }
+
+template <class Master_matrix>
+inline void Base_matrix<Master_matrix>::erase_empty_column(Index columnIndex)
+{
+  auto it=matrix_.begin()+columnIndex; 
+  for (int i=columnIndex+1; i<get_number_of_columns(); i++){
+    std::iter_swap(it,it++);
+  }
+  // remove_last();
+}
+
 
 template <class Master_matrix>
 inline typename Base_matrix<Master_matrix>::Index Base_matrix<Master_matrix>::get_number_of_columns() const

@@ -124,6 +124,8 @@ class RU_representative_cycles
 
   void _retrieve_cycle_from_r(Index colIdx, Index repIdx);
   void _retrieve_cycle_from_u(Index colIdx, Index repIdx);
+
+ protected:
   Inverse_column _get_inverse(Index c);
 };
 
