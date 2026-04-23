@@ -343,14 +343,16 @@ class Base_matrix : public Master_matrix::template Base_swap_option<Base_matrix<
 
   void print();  // for debug
 
- private:
+public:
   using Column_container = typename Master_matrix::Column_container;
+  Column_container matrix_;      /**< Column container. */
+
+ private:
   using Entry_representative =
       typename std::conditional<Master_matrix::Option_list::is_z2, Index, std::pair<Index, Field_element> >::type;
 
   friend Swap_opt;  // direct access to matrix_ to avoid row reorder.
 
-  Column_container matrix_;      /**< Column container. */
   Index nextInsertIndex_;        /**< Next unused column index. */
   Column_settings* colSettings_; /**< Entry factory. */
 

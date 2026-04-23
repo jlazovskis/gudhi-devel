@@ -378,13 +378,14 @@ class Boundary_matrix : public Master_matrix::Matrix_dimension_option,
 
   void print();  // for debug
 
- private:
+public:
   using Column_container = typename Master_matrix::Column_container;
+  Column_container matrix_;      /**< Column container. */
 
+ private:
   friend Swap_opt;
   friend Pair_opt;
 
-  Column_container matrix_;      /**< Column container. */
   Index nextInsertIndex_;        /**< Next unused column index. */
   Column_settings* colSettings_; /**< Entry factory. */
 
