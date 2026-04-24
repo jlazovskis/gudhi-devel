@@ -536,7 +536,7 @@ inline void Base_matrix<Master_matrix>::erase_empty_column(Index columnIndex)
   for (int i=columnIndex+1; i<get_number_of_columns(); i++){
     std::iter_swap(it,it++);
   }
-  // remove_last();
+  remove_last();
 }
 
 

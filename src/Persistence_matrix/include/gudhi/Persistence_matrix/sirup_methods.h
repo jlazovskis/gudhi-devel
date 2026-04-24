@@ -138,13 +138,16 @@ class SiRUP_methods {
     // R.erase_empty_column(columnIndex);
     // U.erase_empty_column(columnIndex);
 
-    // R.zero_column(columnIndex);
-    // U.zero_column(columnIndex);
-    // for (int i = columnIndex; i < size-1; ++i) {
-    //   R.swap_columns(i,i+1);
-    //   U.swap_columns(i,i+1);
-    //   U.swap_rows(i,i+1);
-    // }
+    R.zero_column(columnIndex);
+    U.zero_column(columnIndex);
+    R.erase_empty_column(size-1);
+    for (int i = columnIndex; i < size-1; ++i) {
+      // R.swap_columns(i,i+1);
+      U.swap_columns(i,i+1);
+      U.swap_rows(i,i+1);
+    }
+    U.erase_empty_column(size-1);
+    U.erase_empty_row(size-1);
 
     // R.matrix_.erase(R.matrix_.begin()+columnIndex);
     // U.matrix_.erase(U.matrix_.begin()+columnIndex);
@@ -172,35 +175,35 @@ class SiRUP_methods {
 
     // Definitions
     Column res = Column(U.get_column(r), nullptr);
-    std::set<Index> removedColumns_unshifted;
+    // std::set<Index> removedColumns_unshifted;
     auto size = U.get_number_of_columns();
     auto it = std::next(res.begin());
-    auto it_rcu = removedColumns_unshifted.begin();
-    Index shift = 0;
-    for ( auto rc : removedColumns ) {
-      removedColumns_unshifted.insert(rc + shift);
-      ++shift;
-    }
-    if ( shift > 0 ){ it_rcu++; }   
+    // auto it_rcu = removedColumns_unshifted.begin();
+    // Index shift = 0;
+    // for ( auto rc : removedColumns ) {
+    //   removedColumns_unshifted.insert(rc + shift);
+    //   ++shift;
+    // }
+    // if ( shift > 0 ){ it_rcu++; }   
 
     // Construct inverse
     while (it != res.end()){
-      if ( (it_rcu != removedColumns_unshifted.end()) && (*it_rcu == M::get_element(*it)) ){
-        ++it_rcu;
-      }
-      else {
+      // if ( (it_rcu != removedColumns_unshifted.end()) && (*it_rcu == M::get_element(*it)) ){
+      //   ++it_rcu;
+      // }
+      // else {
         Column cur_row = Column(U.get_column(*it), nullptr);
         cur_row.clear(*it);
         cur_row *= op->get_characteristic() - M::get_element(*it);
         res += cur_row;
-      }
+      // }
       ++it;
     }
 
     // Get rid of unnecessary entries
-    for ( auto i : removedColumns_unshifted ) {
-      res.clear(i);
-    }
+    // for ( auto i : removedColumns_unshifted ) {
+    //   res.clear(i);
+    // }
 
     // Return result
     return res;
