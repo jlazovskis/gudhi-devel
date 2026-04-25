@@ -140,13 +140,14 @@ class SiRUP_methods {
 
     R.zero_column(columnIndex);
     U.zero_column(columnIndex);
-    R.erase_empty_column(size-1);
+    R.erase_empty_column(columnIndex);
+    U.erase_empty_column(columnIndex);
     for (int i = columnIndex; i < size-1; ++i) {
       // R.swap_columns(i,i+1);
-      U.swap_columns(i,i+1);
+      // U.swap_columns(i,i+1);
       U.swap_rows(i,i+1);
     }
-    U.erase_empty_column(size-1);
+    // U.erase_empty_column(size-1);
     U.erase_empty_row(size-1);
 
     // R.matrix_.erase(R.matrix_.begin()+columnIndex);

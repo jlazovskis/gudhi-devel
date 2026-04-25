@@ -534,7 +534,7 @@ inline void Base_matrix<Master_matrix>::erase_empty_column(Index columnIndex)
 {
   auto it=matrix_.begin()+columnIndex; 
   for (int i=columnIndex+1; i<get_number_of_columns(); i++){
-    std::iter_swap(it,it++);
+    this->swap_columns(i-1,i);
   }
   remove_last();
 }
