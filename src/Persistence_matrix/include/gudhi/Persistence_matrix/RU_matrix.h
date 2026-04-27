@@ -276,7 +276,7 @@ class RU_matrix : public Master_matrix::RU_pairing_option,
    */
   void remove_maximal_cell(Index columnIndex);
   void remove_maximal_cell_sirup(Index columnIndex);
-  void remove_maximal_cell_sirup(Index columnIndex, std::set<Index> removedColumns);
+  void remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated);
 
   /**
    * @brief Only available if @ref PersistenceMatrixOptions::has_removable_columns is true.
@@ -681,13 +681,15 @@ inline void RU_matrix<Master_matrix>::remove_maximal_cell(Index columnIndex)
 template <class Master_matrix>
 inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(Index columnIndex)
 {
-  SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, columnIndex);
+  std::vector<Index> removeColumns;
+  removeColumns.push_back(columnIndex);
+  SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, removeColumns, false);
 }
 
 template <class Master_matrix>
-inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(Index columnIndex, std::set<Index> removedColumns)
+inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated)
 {
-  SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, columnIndex, removedColumns);
+  SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, removeColumns, is_index_updated);
 }
 
   template <class Master_matrix>

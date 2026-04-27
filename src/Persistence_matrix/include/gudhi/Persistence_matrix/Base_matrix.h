@@ -224,6 +224,7 @@ class Base_matrix : public Master_matrix::template Base_swap_option<Base_matrix<
    * @param columnIndex @ref columnIndex "Column index" of the empty column.
    */
   void erase_empty_column(Index columnIndex);
+  void shift_row_indices_after(Index columnIndex, Index rowIndex, Index shiftBy);
 
   /**
    * @brief Returns the current number of columns in the matrix.
@@ -537,6 +538,13 @@ inline void Base_matrix<Master_matrix>::erase_empty_column(Index columnIndex)
     this->swap_columns(i-1,i);
   }
   remove_last();
+}
+
+
+template <class Master_matrix>
+inline void Base_matrix<Master_matrix>::shift_row_indices_after(Index columnIndex, Index rowIndex, Index shiftBy)
+{
+
 }
 
 

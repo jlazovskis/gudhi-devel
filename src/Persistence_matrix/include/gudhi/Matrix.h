@@ -1079,7 +1079,7 @@ class Matrix
    * @ref IDIdx index.
    */
   void remove_maximal_cell_sirup(Index columnIndex);
-  void remove_maximal_cell_sirup(Index columnIndex, std::set<Index> removedColumns);
+  void remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated);
   /**
    * @brief Removes the last inserted column/cell from the matrix.
    * If the matrix is @ref mp_matrices "non basic", @ref PersistenceMatrixOptions::has_removable_columns has to be true
@@ -1910,8 +1910,8 @@ inline void Matrix<PersistenceMatrixOptions>::remove_maximal_cell_sirup(Index co
 }
 
 template <class PersistenceMatrixOptions>
-inline void Matrix<PersistenceMatrixOptions>::remove_maximal_cell_sirup(Index columnIndex, std::set<Index> removedColumns) {
-  matrix_.remove_maximal_cell_sirup(columnIndex, removedColumns);
+inline void Matrix<PersistenceMatrixOptions>::remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated) {
+  matrix_.remove_maximal_cell_sirup(removeColumns, is_index_updated);
 }
 
 template <class PersistenceMatrixOptions>
