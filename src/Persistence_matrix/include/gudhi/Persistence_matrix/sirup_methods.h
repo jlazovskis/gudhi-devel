@@ -37,13 +37,16 @@ class SiRUP_methods {
     _execute_sirup(op, R, U, removeColumns, removedColumns, is_index_updated);
     _clear_rows_columns(op, R, U, removedColumns, is_index_updated);
     _update_barcode(op, R, U, removedColumns);
+
+    // R.print();
+    // U.print();
   }
 
   // Step 1: Execute SiRUP
   static void _execute_sirup(const typename Master_matrix::Field_operators* op,
                              typename Master_matrix::Master_boundary_matrix& R,
                              typename Master_matrix::Master_base_matrix& U, std::vector<Index> removeColumns,
-                             std::set<Index> removedColumns, bool is_index_updated) {
+                             std::set<Index>& removedColumns, bool is_index_updated) {
     // Shorthand
     using M = Master_matrix;
 
@@ -51,13 +54,13 @@ class SiRUP_methods {
     for (int i = 0; i < removeColumns.size(); i++) {
       Index columnIndex = removeColumns[i];
       if (is_index_updated && removedColumns.size() > 0) {
-        for (auto it_rc = removedColumns.begin(); it_rc != removedColumns.end(); ++it_rc){
-          if ( *it_rc <= columnIndex ) {
+        for (auto it_rc = removedColumns.begin(); it_rc != removedColumns.end(); ++it_rc) {
+          if (*it_rc <= columnIndex) {
             columnIndex += 1;
           }
         }
       }
-      std::cout << "removing at index " << columnIndex << std::endl;
+      // std::cout << "removing at index " << columnIndex << std::endl;
 
       // Definitions
       Index size = R.get_number_of_columns();
@@ -139,43 +142,39 @@ class SiRUP_methods {
       R.zero_column(columnIndex);
       U.zero_column(columnIndex);
       removedColumns.insert(columnIndex);
+
+      // R.print();
+      // U.print();
     }
   };
 
   // Part of Step 1: Get inverse row
   static Column get_inverse_row(const typename Master_matrix::Field_operators* op,
                                 typename Master_matrix::Master_base_matrix& U, Index r,
-                                std::set<Index> removedColumns) {
+                                std::set<Index>& removedColumns) {
     // Shorthand
     using M = Master_matrix;
     using E = typename M::Element;
 
     // Definitions
+    const Column res_const = Column(U.get_column(r), nullptr);
     Column res = Column(U.get_column(r), nullptr);
     auto size = U.get_number_of_columns();
-    auto it = std::next(res.begin());
-    auto it_rc = removedColumns.begin();
-    if (removedColumns.size() > 0) {
-      it_rc++;
-    }
+    auto it = std::next(res_const.begin());
 
     // Construct inverse
-    while (it != res.end()) {
-      if ((it_rc != removedColumns.end()) && (*it_rc == M::get_element(*it))) {
-        ++it_rc;
-      } else {
-        Column cur_row = Column(U.get_column(*it), nullptr);
-        cur_row.clear(*it);
-        cur_row *= op->get_characteristic() - M::get_element(*it);
-        res += cur_row;
-      }
+    while (it != res_const.end()) {
+      Column cur_row = Column(U.get_column(*it), nullptr);
+      cur_row.clear(*it);
+      cur_row *= op->get_characteristic() - M::get_element(*it);
+      res += cur_row;
       ++it;
     }
 
     // Get rid of unnecessary entries
-    for (auto i : removedColumns) {
-      res.clear(i);
-    }
+    // for (auto i : removedColumns) {
+    //   res.clear(i);
+    // }
 
     // Return result
     return res;
@@ -184,7 +183,7 @@ class SiRUP_methods {
   // Step 2: Clear the rows and columns
   static void _clear_rows_columns(const typename Master_matrix::Field_operators* op,
                                   typename Master_matrix::Master_boundary_matrix& R,
-                                  typename Master_matrix::Master_base_matrix& U, std::set<Index> removedColumns,
+                                  typename Master_matrix::Master_base_matrix& U, std::set<Index>& removedColumns,
                                   bool is_index_updated) {
     // Remove columns
     // R.erase_empty_column(columnIndex);
@@ -195,9 +194,9 @@ class SiRUP_methods {
 
     // Swap all in one sweep
     if (removedColumns.size() > 0) {
-      auto it_rc = std::next(removedColumns.begin());
+      auto it_rc = removedColumns.begin();
       bool at_end = false;
-      for (int i = *it_rc; i < size - 1; i++) {
+      for (int i = *it_rc; i < size; i++) {
         if (!at_end && *it_rc == i) {
           shift += 1;
           if (it_rc == removedColumns.end()) {
@@ -207,14 +206,19 @@ class SiRUP_methods {
           }
         } else {
           U.swap_rows(i - shift, i);
+          // std::cout << "*swapping " << i - shift << " and " << i << "\n";
         }
+      }
+    }
 
-        // Erase all in one sweep
-        for (Index columnIndex : removedColumns) {
-          R.erase_empty_column(columnIndex);
-          U.erase_empty_column(columnIndex);
-          U.erase_empty_row(size - 1);
-        }
+    // Erase all in one sweep
+    shift = 0;
+    for (Index columnIndex : removedColumns) {
+      R.erase_empty_column(columnIndex-shift);
+      U.erase_empty_column(columnIndex-shift);
+      U.erase_empty_row(size - 1 - shift);
+      ++shift;
+    }
 
         // R.matrix_.erase(R.matrix_.begin()+columnIndex);
         // U.matrix_.erase(U.matrix_.begin()+columnIndex);
@@ -228,14 +232,12 @@ class SiRUP_methods {
         // U.erase_empty_row(size-1);
         // R.print();
         // U.print();
-      }
-    };
   };
 
   // Step 3: Update the barcode
   static void _update_barcode(const typename Master_matrix::Field_operators* op,
                               typename Master_matrix::Master_boundary_matrix& R,
-                              typename Master_matrix::Master_base_matrix& U, std::set<Index> removedColumns){};
+                              typename Master_matrix::Master_base_matrix& U, std::set<Index>& removedColumns){};
 };
 
 }  // namespace persistence_matrix
