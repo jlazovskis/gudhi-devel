@@ -1,8 +1,9 @@
 #ifndef SIRUP_METHODS_H
 #define SIRUP_METHODS_H
 
-#include <gudhi/Persistence_matrix/RU_matrix.h>
 #include <gudhi/persistence_matrix_options.h>
+#include <gudhi/Persistence_matrix/RU_matrix.h>
+#include <gudhi/Persistence_matrix/ru_pairing.h>
 #include <gudhi/Persistence_matrix/columns/entry_types.h>
 
 namespace Gudhi {
@@ -99,6 +100,7 @@ class SiRUP_methods {
       // Perform column additions
       itA = A.end();
       itA--;
+      bool inB = false;
       while (itA != A.begin()) {
         auto itB = B.begin();
         // std::cout << "*considering col " << M::get_row_index(*itA);
@@ -107,35 +109,35 @@ class SiRUP_methods {
 
         // Separate case for zero columns
         if (R.is_zero_column(M::get_row_index(*itA))) {
-          // if (R.is_zero_column(row_shift(M::get_row_index(*itA)))) {
           itB = std::prev(B.end());
           if (*itB == M::get_row_index(*itA)) {
-            // if (*itB == row_shift(M::get_row_index(*itA))) {
             itB--;
+            inB = true;
           }
         }
 
         // Separate case for nonzero columns
         else {
           Index k = R.get_pivot(M::get_row_index(*itA));
-          // Index k = R.get_pivot(row_shift(M::get_row_index(*itA)));
           while ((R.get_pivot(*itB) > k) && (R.get_pivot(*itB) != -1)) {
             itB++;
           }
           if (*itB == M::get_row_index(*itA)) {
-            // if (*itB == row_shift(M::get_row_index(*itA))) {
             itB--;
+            inB = true;
           }
         }
 
-        // Perform addition and go to next step
-        // std::cout << "adding " << *itB << " to " << M::get_row_index(*itA) << std::endl;
-        // std::cout << "adding " << *itB << " to " << row_shift(M::get_row_index(*itA)) << std::endl;
+        // Update barcode
+        if ( inB ) {
+          R::_update_barcode(M::get_row_index(*itA), *itB);
+        }
+
+        // Perform addition
         R.add_to(*itB, M::get_row_index(*itA));
-        // R.add_to(*itB, row_shift(M::get_row_index(*itA)));
         U.add_to(M::get_row_index(*itA), *itB);
-        // U.add_to(*itB, row_shift(M::get_row_index(*itA)));
         itA--;
+
       }
 
       // Clean up
