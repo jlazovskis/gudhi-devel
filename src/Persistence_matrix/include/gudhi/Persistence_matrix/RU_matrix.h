@@ -464,6 +464,7 @@ class RU_matrix : public Master_matrix::RU_pairing_option,
   friend Rep_opt;                    // direct access to the two matrices
   friend Swap_opt;                   // direct access to the two matrices, pivotToColumnIndex_
   friend RU_pairing<Master_matrix>;  // direct access to positionToID_
+  friend class SiRUP_methods<Master_matrix>;  // direct access to _update_barcode
 
   R_matrix reducedMatrixR_; /**< R. */
   // TODO: make U not accessible by default and add option to enable access? Inaccessible, it
@@ -690,6 +691,7 @@ template <class Master_matrix>
 inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated)
 {
   SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, removeColumns, is_index_updated);
+  
 }
 
   template <class Master_matrix>

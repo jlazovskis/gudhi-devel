@@ -26,6 +26,9 @@ namespace persistence_matrix {
 template <typename Master_matrix>
 class RU_barcode_swap;
 
+template <typename Master_matrix>
+class SiRUP_methods;
+
 /**
  * @ingroup persistence_matrix
  *
@@ -62,7 +65,7 @@ class RU_pairing
    * @return Const reference to the barcode.
    */
   const Barcode& get_current_barcode() const { return barcode_; }
-
+  
   /**
    * @brief Swap operator.
    */

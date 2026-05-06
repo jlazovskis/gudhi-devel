@@ -19,9 +19,34 @@ static Index get_row_index_shifted(Index row_index, auto it_begin, auto it_end) 
 }
 
 template <class Master_matrix>
-class SiRUP_methods {
+class SiRUP_methods : public RU_pairing<Master_matrix> {
   using Column = typename Master_matrix::Column;
   using Index = typename Master_matrix::Index;
+  using RUP = RU_pairing<Master_matrix>;
+  // using Pair_opt = typename Master_matrix::RU_pairing_option;
+
+ private:
+  Index& _death(Index index) {
+    if constexpr (Master_matrix::Option_list::has_removable_columns) {
+      return RUP::indexToBar_.at(index)->death;
+    } else {
+      return RUP::barcode_.at(RUP::indexToBar_.at(index)).death;
+    }
+  }
+
+  Index& _birth(Index index) {
+    if constexpr (Master_matrix::Option_list::has_removable_columns) {
+      return RUP::indexToBar_.at(index)->birth;
+    } else {
+      return RUP::barcode_.at(RUP::indexToBar_.at(index)).birth;
+    }
+  }
+
+  // void _update_barcode(Index birthPivot, Index death) {
+  //   if constexpr (Master_matrix::Option_list::has_column_pairings) {
+  //     typename RU_pairing<Master_matrix>::_update_barcode(birthPivot, death);
+  //   }
+  // }
 
  public:
   static void remove_maximal_cell(const typename Master_matrix::Field_operators* op,
@@ -31,13 +56,18 @@ class SiRUP_methods {
     static_assert(Master_matrix::Option_list::has_removable_columns,
                   "'remove_maximal_cell' is not implemented for the chosen options.");
 
+    std::cout << "--------------------\n";
+    std::cout << "**barcode size = " << R->_birth(0) << "\n";
+    std::cout << "--------------------\n";
+
     // Container for columns already removed. Indexation does not change.
     std::set<Index> removedColumns;
 
     // Steps of algorithm implementation
     _execute_sirup(op, R, U, removeColumns, removedColumns, is_index_updated);
     _clear_rows_columns(op, R, U, removedColumns, is_index_updated);
-    _update_barcode(op, R, U, removedColumns);
+    // _update_barcode(op, R, U, removedColumns);
+    // _update_barcode(13,21);
 
     // R.print();
     // U.print();
@@ -129,15 +159,14 @@ class SiRUP_methods {
         }
 
         // Update barcode
-        if ( inB ) {
-          R::_update_barcode(M::get_row_index(*itA), *itB);
-        }
+        // if ( inB ) {
+        //   R::_update_barcode(M::get_row_index(*itA), *itB);
+        // }
 
         // Perform addition
         R.add_to(*itB, M::get_row_index(*itA));
         U.add_to(M::get_row_index(*itA), *itB);
         itA--;
-
       }
 
       // Clean up
@@ -216,30 +245,25 @@ class SiRUP_methods {
     // Erase all in one sweep
     shift = 0;
     for (Index columnIndex : removedColumns) {
-      R.erase_empty_column(columnIndex-shift);
-      U.erase_empty_column(columnIndex-shift);
+      R.erase_empty_column(columnIndex - shift);
+      U.erase_empty_column(columnIndex - shift);
       U.erase_empty_row(size - 1 - shift);
       ++shift;
     }
 
-        // R.matrix_.erase(R.matrix_.begin()+columnIndex);
-        // U.matrix_.erase(U.matrix_.begin()+columnIndex);
-        // U.erase_empty_row(columnIndex);
+    // R.matrix_.erase(R.matrix_.begin()+columnIndex);
+    // U.matrix_.erase(U.matrix_.begin()+columnIndex);
+    // U.erase_empty_row(columnIndex);
 
-        // R.Column_container.erase(columnIndex);
-        // U.Column_container.erase(columnIndex);
+    // R.Column_container.erase(columnIndex);
+    // U.Column_container.erase(columnIndex);
 
-        // R.erase_empty_column(size-1);
-        // U.erase_empty_column(size-1);
-        // U.erase_empty_row(size-1);
-        // R.print();
-        // U.print();
+    // R.erase_empty_column(size-1);
+    // U.erase_empty_column(size-1);
+    // U.erase_empty_row(size-1);
+    // R.print();
+    // U.print();
   };
-
-  // Step 3: Update the barcode
-  static void _update_barcode(const typename Master_matrix::Field_operators* op,
-                              typename Master_matrix::Master_boundary_matrix& R,
-                              typename Master_matrix::Master_base_matrix& U, std::set<Index>& removedColumns){};
 };
 
 }  // namespace persistence_matrix
