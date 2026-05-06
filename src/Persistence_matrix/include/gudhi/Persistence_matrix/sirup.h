@@ -18,29 +18,46 @@ static Index get_row_index_shifted(Index row_index, auto it_begin, auto it_end) 
   return row_index;
 }
 
-template <class Master_matrix>
-class SiRUP_methods : public RU_pairing<Master_matrix> {
-  using Column = typename Master_matrix::Column;
+template <typename Master_matrix>
+class SiRUP_barcode : public RU_pairing<Master_matrix> {
   using Index = typename Master_matrix::Index;
+  using ID_index = typename Master_matrix::ID_index;
+  using Pos_index = typename Master_matrix::Pos_index;
   using RUP = RU_pairing<Master_matrix>;
-  // using Pair_opt = typename Master_matrix::RU_pairing_option;
 
- private:
-  Index& _death(Index index) {
+  SiRUP_barcode() = default;
+  SiRUP_barcode(const SiRUP_barcode& toCopy) : RUP(static_cast<const RUP&>(toCopy)) {};
+  SiRUP_barcode(SiRUP_barcode&& other) noexcept : RUP(std::move(static_cast<RUP&>(other))) {};
+  ~SiRUP_barcode() = default;
+  SiRUP_barcode& operator=(const SiRUP_barcode& other) {
+    RUP::operator=(other);
+    return *this; }
+  SiRUP_barcode& operator=(SiRUP_barcode&& other) noexcept {
+    RUP::operator=(std::move(other));
+    return *this; }
+  Pos_index _death_val(Pos_index index) const {
     if constexpr (Master_matrix::Option_list::has_removable_columns) {
       return RUP::indexToBar_.at(index)->death;
     } else {
-      return RUP::barcode_.at(RUP::indexToBar_.at(index)).death;
-    }
-  }
-
-  Index& _birth(Index index) {
+      return RUP::barcode_.at(RUP::indexToBar_.at(index)).death; }}
+  Pos_index _birth_val(Pos_index index) const {
     if constexpr (Master_matrix::Option_list::has_removable_columns) {
       return RUP::indexToBar_.at(index)->birth;
     } else {
-      return RUP::barcode_.at(RUP::indexToBar_.at(index)).birth;
-    }
-  }
+      return RUP::barcode_.at(RUP::indexToBar_.at(index)).birth; } }
+  void _reset() { RUP::_reset();}};
+
+
+template <class Master_matrix>
+class SiRUP_methods {
+  using Column = typename Master_matrix::Column;
+  using Index = typename Master_matrix::Index;
+
+ private:
+  using Master_RU_matrix = typename Master_matrix::Master_RU_matrix;
+protected:
+  constexpr Master_RU_matrix* _matrix() { return static_cast<Master_RU_matrix*>(this); }
+  constexpr const Master_RU_matrix* _matrix() const { return static_cast<const Master_RU_matrix*>(this); }
 
   // void _update_barcode(Index birthPivot, Index death) {
   //   if constexpr (Master_matrix::Option_list::has_column_pairings) {
@@ -49,16 +66,23 @@ class SiRUP_methods : public RU_pairing<Master_matrix> {
   // }
 
  public:
-  static void remove_maximal_cell(const typename Master_matrix::Field_operators* op,
+   void my_swap(){
+        bool iIsPositive = _matrix()->reducedMatrixR_.is_zero_column(0);
+   }
+
+  void remove_maximal_cell(const typename Master_matrix::Field_operators* op,
                                   typename Master_matrix::Master_boundary_matrix& R,
                                   typename Master_matrix::Master_base_matrix& U, std::vector<Index> removeColumns,
                                   bool is_index_updated) {
     static_assert(Master_matrix::Option_list::has_removable_columns,
                   "'remove_maximal_cell' is not implemented for the chosen options.");
 
-    std::cout << "--------------------\n";
-    std::cout << "**barcode size = " << R->_birth(0) << "\n";
-    std::cout << "--------------------\n";
+
+    // bool iIsPositive = _matrix()->reducedMatrixR_.is_zero_column(0);
+
+    // std::cout << "--------------------\n";
+    // std::cout << "**barcode size = " << R->_birth(0) << "\n";
+    // std::cout << "--------------------\n";
 
     // Container for columns already removed. Indexation does not change.
     std::set<Index> removedColumns;
@@ -66,6 +90,7 @@ class SiRUP_methods : public RU_pairing<Master_matrix> {
     // Steps of algorithm implementation
     _execute_sirup(op, R, U, removeColumns, removedColumns, is_index_updated);
     _clear_rows_columns(op, R, U, removedColumns, is_index_updated);
+    // my_swap();
     // _update_barcode(op, R, U, removedColumns);
     // _update_barcode(13,21);
 
@@ -74,7 +99,7 @@ class SiRUP_methods : public RU_pairing<Master_matrix> {
   }
 
   // Step 1: Execute SiRUP
-  static void _execute_sirup(const typename Master_matrix::Field_operators* op,
+  void _execute_sirup(const typename Master_matrix::Field_operators* op,
                              typename Master_matrix::Master_boundary_matrix& R,
                              typename Master_matrix::Master_base_matrix& U, std::vector<Index> removeColumns,
                              std::set<Index>& removedColumns, bool is_index_updated) {
@@ -131,6 +156,7 @@ class SiRUP_methods : public RU_pairing<Master_matrix> {
       itA = A.end();
       itA--;
       bool inB = false;
+      bool zeroCol = false;
       while (itA != A.begin()) {
         auto itB = B.begin();
         // std::cout << "*considering col " << M::get_row_index(*itA);
@@ -144,6 +170,7 @@ class SiRUP_methods : public RU_pairing<Master_matrix> {
             itB--;
             inB = true;
           }
+          zeroCol = true;
         }
 
         // Separate case for nonzero columns
@@ -159,9 +186,15 @@ class SiRUP_methods : public RU_pairing<Master_matrix> {
         }
 
         // Update barcode
-        // if ( inB ) {
-        //   R::_update_barcode(M::get_row_index(*itA), *itB);
-        // }
+        if ( inB ) {
+          std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
+          _matrix()->_update_barcode(R.get_pivot(*itB), *itA);
+          inB = false;
+          if ( zeroCol ){
+            _matrix()->_remove_last(*itA);        
+            zeroCol = false;  
+          }
+        }
 
         // Perform addition
         R.add_to(*itB, M::get_row_index(*itA));

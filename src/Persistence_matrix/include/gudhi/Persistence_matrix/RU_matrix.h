@@ -23,7 +23,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include <gudhi/Persistence_matrix/sirup_methods.h>
+#include <gudhi/Persistence_matrix/sirup.h>
 
 namespace Gudhi {
 namespace persistence_matrix {
@@ -45,7 +45,8 @@ class RU_pairing;
 template <class Master_matrix>
 class RU_matrix : public Master_matrix::RU_pairing_option,
                   public Master_matrix::RU_vine_swap_option,
-                  public Master_matrix::RU_representative_cycles_option
+                  public Master_matrix::RU_representative_cycles_option,
+                  public SiRUP_methods<Master_matrix>
 {
  private:
   using Pair_opt = typename Master_matrix::RU_pairing_option;
@@ -691,7 +692,7 @@ template <class Master_matrix>
 inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated)
 {
   SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, removeColumns, is_index_updated);
-  
+  // Pair_opt::_update_barcode(3,21);
 }
 
   template <class Master_matrix>
