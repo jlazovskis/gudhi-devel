@@ -18,36 +18,6 @@ static Index get_row_index_shifted(Index row_index, auto it_begin, auto it_end) 
   return row_index;
 }
 
-template <typename Master_matrix>
-class SiRUP_barcode : public RU_pairing<Master_matrix> {
-  using Index = typename Master_matrix::Index;
-  using ID_index = typename Master_matrix::ID_index;
-  using Pos_index = typename Master_matrix::Pos_index;
-  using RUP = RU_pairing<Master_matrix>;
-
-  SiRUP_barcode() = default;
-  SiRUP_barcode(const SiRUP_barcode& toCopy) : RUP(static_cast<const RUP&>(toCopy)) {};
-  SiRUP_barcode(SiRUP_barcode&& other) noexcept : RUP(std::move(static_cast<RUP&>(other))) {};
-  ~SiRUP_barcode() = default;
-  SiRUP_barcode& operator=(const SiRUP_barcode& other) {
-    RUP::operator=(other);
-    return *this; }
-  SiRUP_barcode& operator=(SiRUP_barcode&& other) noexcept {
-    RUP::operator=(std::move(other));
-    return *this; }
-  Pos_index _death_val(Pos_index index) const {
-    if constexpr (Master_matrix::Option_list::has_removable_columns) {
-      return RUP::indexToBar_.at(index)->death;
-    } else {
-      return RUP::barcode_.at(RUP::indexToBar_.at(index)).death; }}
-  Pos_index _birth_val(Pos_index index) const {
-    if constexpr (Master_matrix::Option_list::has_removable_columns) {
-      return RUP::indexToBar_.at(index)->birth;
-    } else {
-      return RUP::barcode_.at(RUP::indexToBar_.at(index)).birth; } }
-  void _reset() { RUP::_reset();}};
-
-
 template <class Master_matrix>
 class SiRUP_methods {
   using Column = typename Master_matrix::Column;
@@ -55,9 +25,6 @@ class SiRUP_methods {
 
  private:
   using Master_RU_matrix = typename Master_matrix::Master_RU_matrix;
-protected:
-  constexpr Master_RU_matrix* _matrix() { return static_cast<Master_RU_matrix*>(this); }
-  constexpr const Master_RU_matrix* _matrix() const { return static_cast<const Master_RU_matrix*>(this); }
 
   // void _update_barcode(Index birthPivot, Index death) {
   //   if constexpr (Master_matrix::Option_list::has_column_pairings) {
@@ -66,17 +33,15 @@ protected:
   // }
 
  public:
-   void my_swap(){
-        bool iIsPositive = _matrix()->reducedMatrixR_.is_zero_column(0);
-   }
 
-  void remove_maximal_cell(const typename Master_matrix::Field_operators* op,
-                                  typename Master_matrix::Master_boundary_matrix& R,
-                                  typename Master_matrix::Master_base_matrix& U, std::vector<Index> removeColumns,
+  static void remove_maximal_cell(Master_RU_matrix& RU, std::vector<Index> removeColumns,
                                   bool is_index_updated) {
     static_assert(Master_matrix::Option_list::has_removable_columns,
                   "'remove_maximal_cell' is not implemented for the chosen options.");
 
+    // auto op = RU.operators_;
+    // auto R = RU.reducedMatrixR_;
+    // auto U = RU.mirrorMatrixU_;
 
     // bool iIsPositive = _matrix()->reducedMatrixR_.is_zero_column(0);
 
@@ -88,8 +53,8 @@ protected:
     std::set<Index> removedColumns;
 
     // Steps of algorithm implementation
-    _execute_sirup(op, R, U, removeColumns, removedColumns, is_index_updated);
-    _clear_rows_columns(op, R, U, removedColumns, is_index_updated);
+    _execute_sirup(RU, removeColumns, removedColumns, is_index_updated);
+    _clear_rows_columns(RU, removedColumns, is_index_updated);
     // my_swap();
     // _update_barcode(op, R, U, removedColumns);
     // _update_barcode(13,21);
@@ -99,11 +64,12 @@ protected:
   }
 
   // Step 1: Execute SiRUP
-  void _execute_sirup(const typename Master_matrix::Field_operators* op,
-                             typename Master_matrix::Master_boundary_matrix& R,
-                             typename Master_matrix::Master_base_matrix& U, std::vector<Index> removeColumns,
+  static void _execute_sirup(Master_RU_matrix& RU, std::vector<Index> removeColumns,
                              std::set<Index>& removedColumns, bool is_index_updated) {
     // Shorthand
+    auto op = RU.operators_;
+    auto R = RU.reducedMatrixR_;
+    auto U = RU.mirrorMatrixU_;
     using M = Master_matrix;
 
     // Iterate over columns requested to remove
@@ -123,7 +89,7 @@ protected:
       // std::cout << "* size: " << size <<"\n";
 
       // Get row of V (by inverting U)
-      const auto A = get_inverse_row(op, U, columnIndex, removedColumns);
+      const auto A = get_inverse_row(RU, columnIndex, removedColumns);
       // std::cout << "* Affected simplices: ";
       // for ( auto a : A ) { std::cout << a << " "; }
       // std::cout << std::endl;
@@ -188,10 +154,12 @@ protected:
         // Update barcode
         if ( inB ) {
           std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
-          _matrix()->_update_barcode(R.get_pivot(*itB), *itA);
+          // _matrix()->_update_barcode(R.get_pivot(*itB), *itA);
+          RU._update_barcode(R.get_pivot(*itB), *itA-1);
           inB = false;
           if ( zeroCol ){
-            _matrix()->_remove_last(*itA);        
+            // _matrix()->_remove_last(*itA);        
+            RU._remove_last(*itA);        
             zeroCol = false;  
           }
         }
@@ -213,10 +181,11 @@ protected:
   };
 
   // Part of Step 1: Get inverse row
-  static Column get_inverse_row(const typename Master_matrix::Field_operators* op,
-                                typename Master_matrix::Master_base_matrix& U, Index r,
+  static Column get_inverse_row(Master_RU_matrix& RU, Index r,
                                 std::set<Index>& removedColumns) {
     // Shorthand
+    auto op = RU.operators_;
+    auto U = RU.mirrorMatrixU_;
     using M = Master_matrix;
     using E = typename M::Element;
 
@@ -245,13 +214,15 @@ protected:
   };
 
   // Step 2: Clear the rows and columns
-  static void _clear_rows_columns(const typename Master_matrix::Field_operators* op,
-                                  typename Master_matrix::Master_boundary_matrix& R,
-                                  typename Master_matrix::Master_base_matrix& U, std::set<Index>& removedColumns,
+  static void _clear_rows_columns(Master_RU_matrix& RU, std::set<Index>& removedColumns,
                                   bool is_index_updated) {
     // Remove columns
     // R.erase_empty_column(columnIndex);
     // U.erase_empty_column(columnIndex);
+
+    auto op = RU.operators_;
+    auto R = RU.reducedMatrixR_;
+    auto U = RU.mirrorMatrixU_;
 
     auto size = R.get_number_of_columns();
     int shift = 0;

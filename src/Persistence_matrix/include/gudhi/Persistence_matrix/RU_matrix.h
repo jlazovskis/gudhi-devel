@@ -685,13 +685,13 @@ inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(Index columnInde
 {
   std::vector<Index> removeColumns;
   removeColumns.push_back(columnIndex);
-  SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, removeColumns, false);
+  SiRUP_methods<Master_matrix>::remove_maximal_cell(*this, removeColumns, false);
 }
 
 template <class Master_matrix>
 inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated)
 {
-  SiRUP_methods<Master_matrix>::remove_maximal_cell(operators_, reducedMatrixR_, mirrorMatrixU_, removeColumns, is_index_updated);
+  SiRUP_methods<Master_matrix>::remove_maximal_cell(*this, removeColumns, is_index_updated);
   // Pair_opt::_update_barcode(3,21);
 }
 
