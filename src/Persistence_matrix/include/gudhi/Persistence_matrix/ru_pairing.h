@@ -75,7 +75,7 @@ class RU_pairing
     pairing1.indexToBar_.swap(pairing2.indexToBar_);
     pairing1.idToPosition_.swap(pairing2.idToPosition_);
   }
-  
+
  protected:
   using Pos_index = typename Master_matrix::Pos_index;
   using ID_index = typename Master_matrix::ID_index;
@@ -154,7 +154,6 @@ class RU_pairing
   // could also just mark everything as protected as RU_barcode_swap inherits from RU_pairing
   // but this way, it marks a better difference between "class using this mixin" with "class extending this mixin"
   friend RU_barcode_swap<Master_matrix>;
-  friend SiRUP_barcode<Master_matrix>;  // direct access to _update_barcode
 
   Barcode barcode_;       /**< Bar container. */
   Dictionary indexToBar_; /**< Map from @ref MatIdx index to bar index. */

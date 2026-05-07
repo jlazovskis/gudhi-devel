@@ -33,9 +33,7 @@ class SiRUP_methods {
   // }
 
  public:
-
-  static void remove_maximal_cell(Master_RU_matrix& RU, std::vector<Index> removeColumns,
-                                  bool is_index_updated) {
+  static void remove_maximal_cell(Master_RU_matrix& RU, std::vector<Index> removeColumns, bool is_index_updated) {
     static_assert(Master_matrix::Option_list::has_removable_columns,
                   "'remove_maximal_cell' is not implemented for the chosen options.");
 
@@ -55,17 +53,15 @@ class SiRUP_methods {
     // Steps of algorithm implementation
     _execute_sirup(RU, removeColumns, removedColumns, is_index_updated);
     _clear_rows_columns(RU, removedColumns, is_index_updated);
-    // my_swap();
-    // _update_barcode(op, R, U, removedColumns);
-    // _update_barcode(13,21);
+    _update_persistence(RU, removedColumns);
 
     // R.print();
     // U.print();
   }
 
   // Step 1: Execute SiRUP
-  static void _execute_sirup(Master_RU_matrix& RU, std::vector<Index> removeColumns,
-                             std::set<Index>& removedColumns, bool is_index_updated) {
+  static void _execute_sirup(Master_RU_matrix& RU, std::vector<Index> removeColumns, std::set<Index>& removedColumns,
+                             bool is_index_updated) {
     // Shorthand
     auto op = RU.operators_;
     auto R = RU.reducedMatrixR_;
@@ -152,15 +148,15 @@ class SiRUP_methods {
         }
 
         // Update barcode
-        if ( inB ) {
+        if (inB) {
           std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
           // _matrix()->_update_barcode(R.get_pivot(*itB), *itA);
-          RU._update_barcode(R.get_pivot(*itB), *itA-1);
+          RU._update_barcode(R.get_pivot(*itB), *itA);
           inB = false;
-          if ( zeroCol ){
-            // _matrix()->_remove_last(*itA);        
-            RU._remove_last(*itA);        
-            zeroCol = false;  
+          if (zeroCol) {
+            // _matrix()->_remove_last(*itA);
+            RU._remove_last(*itA);
+            zeroCol = false;
           }
         }
 
@@ -181,8 +177,7 @@ class SiRUP_methods {
   };
 
   // Part of Step 1: Get inverse row
-  static Column get_inverse_row(Master_RU_matrix& RU, Index r,
-                                std::set<Index>& removedColumns) {
+  static Column get_inverse_row(Master_RU_matrix& RU, Index r, std::set<Index>& removedColumns) {
     // Shorthand
     auto op = RU.operators_;
     auto U = RU.mirrorMatrixU_;
@@ -214,8 +209,7 @@ class SiRUP_methods {
   };
 
   // Step 2: Clear the rows and columns
-  static void _clear_rows_columns(Master_RU_matrix& RU, std::set<Index>& removedColumns,
-                                  bool is_index_updated) {
+  static void _clear_rows_columns(Master_RU_matrix& RU, std::set<Index>& removedColumns, bool is_index_updated) {
     // Remove columns
     // R.erase_empty_column(columnIndex);
     // U.erase_empty_column(columnIndex);
@@ -267,6 +261,18 @@ class SiRUP_methods {
     // U.erase_empty_row(size-1);
     // R.print();
     // U.print();
+  };
+
+  // Step 3: Update barcode and index dictionary
+  static void _update_persistence(Master_RU_matrix& RU, std::set<Index>& removedColumns){
+
+    // Update 'Barcode barcode_;'
+    // Is of type 'std::list<Bar>'
+
+    // Update 'Dictionary indexToBar_;'
+    // Is of type 'std::unordered_map<Pos_index, typename Barcode::iterator>'
+
+
   };
 };
 
