@@ -27,7 +27,7 @@ template <typename Master_matrix>
 class RU_barcode_swap;
 
 template <typename Master_matrix>
-class SiRUP_barcode;
+class SiRUP_methods;
 
 /**
  * @ingroup persistence_matrix
@@ -154,6 +154,7 @@ class RU_pairing
   // could also just mark everything as protected as RU_barcode_swap inherits from RU_pairing
   // but this way, it marks a better difference between "class using this mixin" with "class extending this mixin"
   friend RU_barcode_swap<Master_matrix>;
+  friend class SiRUP_methods<Master_matrix>;
 
   Barcode barcode_;       /**< Bar container. */
   Dictionary indexToBar_; /**< Map from @ref MatIdx index to bar index. */

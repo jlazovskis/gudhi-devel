@@ -117,8 +117,7 @@ class SiRUP_methods {
       // Perform column additions
       itA = A.end();
       itA--;
-      bool inB = false;
-      bool zeroCol = false;
+      bool targetInB = false;
       while (itA != A.begin()) {
         auto itB = B.begin();
         // std::cout << "*considering col " << M::get_row_index(*itA);
@@ -130,9 +129,8 @@ class SiRUP_methods {
           itB = std::prev(B.end());
           if (*itB == M::get_row_index(*itA)) {
             itB--;
-            inB = true;
+            targetInB = true;
           }
-          zeroCol = true;
         }
 
         // Separate case for nonzero columns
@@ -143,21 +141,21 @@ class SiRUP_methods {
           }
           if (*itB == M::get_row_index(*itA)) {
             itB--;
-            inB = true;
+            targetInB = true;
           }
         }
 
         // Update barcode
-        if (inB) {
+        if (targetInB) {
           std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
-          // _matrix()->_update_barcode(R.get_pivot(*itB), *itA);
           RU._update_barcode(R.get_pivot(*itB), *itA);
-          inB = false;
-          if (zeroCol) {
-            // _matrix()->_remove_last(*itA);
-            RU._remove_last(*itA);
-            zeroCol = false;
+          targetInB = false;
+
+          // Target is last element of B, so related bar must be removed
+          if ( std::next(itB) == std::prev(B.end()) ) {
+            RU.barcode_.erase(indexToBar_[M::get_row_index(*itA)]);
           }
+
         }
 
         // Perform addition
@@ -268,10 +266,18 @@ class SiRUP_methods {
 
     // Update 'Barcode barcode_;'
     // Is of type 'std::list<Bar>'
+    //  using Bar = Persistence_interval<Dimension, Pos_index>;
+    //  using Pos_index = typename PersistenceMatrixOptions::Index; 
+    //  Persistence_interval is a stuct with dim, birth, death
+
 
     // Update 'Dictionary indexToBar_;'
     // Is of type 'std::unordered_map<Pos_index, typename Barcode::iterator>'
 
+
+    // for (const auto & [ key, value ] : RU.indexToBar_) {
+    //   std::cout << key << " : " << (*value).dim << " / " << (*value).birth << " / " << (*value).death << std::endl;
+    // }
 
   };
 };
