@@ -67,6 +67,7 @@ class SiRUP_methods {
     auto R = RU.reducedMatrixR_;
     auto U = RU.mirrorMatrixU_;
     using M = Master_matrix;
+    constexpr const Index nullDeath = M::template get_null_value<Index>();
 
     // Iterate over columns requested to remove
     for (int i = 0; i < removeColumns.size(); i++) {
@@ -80,14 +81,14 @@ class SiRUP_methods {
           }
         }
       }
-      // std::cout << "removing at index " << columnIndex << std::endl;
+      std::cout << "removing at index " << columnIndex << std::endl;
 
       // Get row of V (from its inverse U)
       // Note this differs from "A" in paper, as this A contains diagonal element
       const auto A = _get_inverse_row(RU, columnIndex, removedColumns);
-      // std::cout << "* Affected simplices: ";
-      // for ( auto a : A ) { std::cout << a << " "; }
-      // std::cout << std::endl;
+      std::cout << "* Affected simplices: ";
+      for ( auto a : A ) { std::cout << a << " "; }
+      std::cout << std::endl;
       // R.print();
 
       // Construct vector of earliest-highest pivot columns
@@ -114,14 +115,15 @@ class SiRUP_methods {
       // std::cout << std::endl;
 
       // Perform column additions and barcode reindexation
+      // If column has not been added to other columns, only update persistence
       if (A.size() == 1) {
-        if (R.is_zero_column(columnIndex)){
-            RU.barcode_.erase(RU.indexToBar_[columnIndex]);
-            RU.indexToBar_.erase(columnIndex);
+        if (!R.is_zero_column(columnIndex)){
+          auto& itBar = RU.indexToBar_.at(columnIndex);
+          itBar->death = nullDeath;
+          RU.indexToBar_.try_emplace(itBar->birth, itBar); // Ask Hannah: is this necessary?
         }
-        else {
-          
-        }
+        RU.barcode_.erase(RU.indexToBar_[columnIndex]);
+      // If column has been added to other columns
       } else {
         itA = A.end();
         itA--;
@@ -142,7 +144,6 @@ class SiRUP_methods {
             }
             targetIsZeroCol = true;
           }
-
           // Separate case for nonzero columns
           else {
             Index k = R.get_pivot(M::get_row_index(*itA));
@@ -155,22 +156,25 @@ class SiRUP_methods {
             }
           }
 
-          // Update barcode
+          // Update bars
           if (targetInB) {
             std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
             RU._update_barcode(R.get_pivot(*itB), *itA);
-            targetInB = false;
 
             // Target is last element of B
             if (std::next(itB) == std::prev(B.end())) {
-              // Case 1: last element of B is zero column, so remove bar
+              // Case 1: target is zero column, so remove bar
               if (targetIsZeroCol) {
                 RU.barcode_.erase(RU.indexToBar_[M::get_row_index(*itA)]);
+                RU.indexToBar_.erase(M::get_row_index(*itA));
               } else {
-                // Case 2: last element of B is nonzero column, so update bar to infinite bar
-                RU._update_barcode(R.get_pivot(*itB), *itA);
-              };
+                // Case 2: target is nonzero column, so update bar to infinite bar
+                auto& itBar = RU.indexToBar_.at(M::get_row_index(*itA));
+                itBar->death = nullDeath;
+                RU.indexToBar_.try_emplace(itBar->birth, itBar); // Ask Hannah: is this necessary?
+              }
             }
+            targetInB = false;
           }
 
           // Perform addition
@@ -180,10 +184,13 @@ class SiRUP_methods {
         }
       }
 
-      // Clean up
+      // Ensure columns are zero
       R.zero_column(columnIndex);
       U.zero_column(columnIndex);
       removedColumns.insert(columnIndex);
+
+      // Remove reference to bar for removed column
+      RU.indexToBar_.erase(columnIndex);
 
       // R.print();
       // U.print();
