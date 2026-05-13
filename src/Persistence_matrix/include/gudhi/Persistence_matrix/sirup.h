@@ -53,7 +53,7 @@ class SiRUP_methods {
     // Steps of algorithm implementation
     _execute_sirup(RU, removeColumns, removedColumns, is_index_updated);
     _clear_rows_columns(RU, removedColumns, is_index_updated);
-    _update_persistence(RU, removedColumns);
+    _shift_persistence_indices(RU, removedColumns);
 
     // R.print();
     // U.print();
@@ -70,6 +70,8 @@ class SiRUP_methods {
 
     // Iterate over columns requested to remove
     for (int i = 0; i < removeColumns.size(); i++) {
+
+      // Reindex if necessary
       Index columnIndex = removeColumns[i];
       if (is_index_updated && removedColumns.size() > 0) {
         for (auto it_rc = removedColumns.begin(); it_rc != removedColumns.end(); ++it_rc) {
@@ -80,18 +82,15 @@ class SiRUP_methods {
       }
       // std::cout << "removing at index " << columnIndex << std::endl;
 
-      // Definitions
-      Index size = R.get_number_of_columns();
-      // std::cout << "* size: " << size <<"\n";
-
-      // Get row of V (by inverting U)
-      const auto A = get_inverse_row(RU, columnIndex, removedColumns);
+      // Get row of V (from its inverse U)
+      // Note this differs from "A" in paper, as this A contains diagonal element
+      const auto A = _get_inverse_row(RU, columnIndex, removedColumns);
       // std::cout << "* Affected simplices: ";
       // for ( auto a : A ) { std::cout << a << " "; }
       // std::cout << std::endl;
       // R.print();
 
-      // construct vector of earliest-highest pivot columns
+      // Construct vector of earliest-highest pivot columns
       std::vector<Index> B = {columnIndex};
       auto itA = A.begin();
       itA++;
@@ -114,54 +113,71 @@ class SiRUP_methods {
       // for ( auto b : B ) { std::cout << b << " "; }
       // std::cout << std::endl;
 
-      // Perform column additions
-      itA = A.end();
-      itA--;
-      bool targetInB = false;
-      while (itA != A.begin()) {
-        auto itB = B.begin();
-        // std::cout << "*considering col " << M::get_row_index(*itA);
-        // if (R.is_zero_column(M::get_row_index(*itA))) { std:: cout << " (is zero)\n";}
-        // else { std:: cout << " (is not zero)\n"; }
-
-        // Separate case for zero columns
-        if (R.is_zero_column(M::get_row_index(*itA))) {
-          itB = std::prev(B.end());
-          if (*itB == M::get_row_index(*itA)) {
-            itB--;
-            targetInB = true;
-          }
+      // Perform column additions and barcode reindexation
+      if (A.size() == 1) {
+        if (R.is_zero_column(columnIndex)){
+            RU.barcode_.erase(RU.indexToBar_[columnIndex]);
+            RU.indexToBar_.erase(columnIndex);
         }
-
-        // Separate case for nonzero columns
         else {
-          Index k = R.get_pivot(M::get_row_index(*itA));
-          while ((R.get_pivot(*itB) > k) && (R.get_pivot(*itB) != -1)) {
-            itB++;
-          }
-          if (*itB == M::get_row_index(*itA)) {
-            itB--;
-            targetInB = true;
-          }
+          
         }
-
-        // Update barcode
-        if (targetInB) {
-          std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
-          RU._update_barcode(R.get_pivot(*itB), *itA);
-          targetInB = false;
-
-          // Target is last element of B, so related bar must be removed
-          if ( std::next(itB) == std::prev(B.end()) ) {
-            RU.barcode_.erase(indexToBar_[M::get_row_index(*itA)]);
-          }
-
-        }
-
-        // Perform addition
-        R.add_to(*itB, M::get_row_index(*itA));
-        U.add_to(M::get_row_index(*itA), *itB);
+      } else {
+        itA = A.end();
         itA--;
+        bool targetInB = false;
+        bool targetIsZeroCol = false;
+        while (itA != A.begin()) {
+          auto itB = B.begin();
+          // std::cout << "*considering col " << M::get_row_index(*itA);
+          // if (R.is_zero_column(M::get_row_index(*itA))) { std:: cout << " (is zero)\n";}
+          // else { std:: cout << " (is not zero)\n"; }
+
+          // Separate case for zero columns
+          if (R.is_zero_column(M::get_row_index(*itA))) {
+            itB = std::prev(B.end());
+            if (*itB == M::get_row_index(*itA)) {
+              itB--;
+              targetInB = true;
+            }
+            targetIsZeroCol = true;
+          }
+
+          // Separate case for nonzero columns
+          else {
+            Index k = R.get_pivot(M::get_row_index(*itA));
+            while ((R.get_pivot(*itB) > k) && (R.get_pivot(*itB) != -1)) {
+              itB++;
+            }
+            if (*itB == M::get_row_index(*itA)) {
+              itB--;
+              targetInB = true;
+            }
+          }
+
+          // Update barcode
+          if (targetInB) {
+            std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
+            RU._update_barcode(R.get_pivot(*itB), *itA);
+            targetInB = false;
+
+            // Target is last element of B
+            if (std::next(itB) == std::prev(B.end())) {
+              // Case 1: last element of B is zero column, so remove bar
+              if (targetIsZeroCol) {
+                RU.barcode_.erase(RU.indexToBar_[M::get_row_index(*itA)]);
+              } else {
+                // Case 2: last element of B is nonzero column, so update bar to infinite bar
+                RU._update_barcode(R.get_pivot(*itB), *itA);
+              };
+            }
+          }
+
+          // Perform addition
+          R.add_to(*itB, M::get_row_index(*itA));
+          U.add_to(M::get_row_index(*itA), *itB);
+          itA--;
+        }
       }
 
       // Clean up
@@ -175,7 +191,7 @@ class SiRUP_methods {
   };
 
   // Part of Step 1: Get inverse row
-  static Column get_inverse_row(Master_RU_matrix& RU, Index r, std::set<Index>& removedColumns) {
+  static Column _get_inverse_row(Master_RU_matrix& RU, Index r, std::set<Index>& removedColumns) {
     // Shorthand
     auto op = RU.operators_;
     auto U = RU.mirrorMatrixU_;
@@ -262,7 +278,7 @@ class SiRUP_methods {
   };
 
   // Step 3: Update barcode and index dictionary
-  static void _update_persistence(Master_RU_matrix& RU, std::set<Index>& removedColumns){
+  static void _shift_persistence_indices(Master_RU_matrix& RU, std::set<Index>& removedColumns){
 
     // Update 'Barcode barcode_;'
     // Is of type 'std::list<Bar>'
