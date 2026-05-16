@@ -81,14 +81,26 @@ class SiRUP_methods {
           }
         }
       }
-      std::cout << "removing at index " << columnIndex << std::endl;
+      // std::cout << "removing at index " << columnIndex << std::endl;
 
       // Get row of V (from its inverse U)
       // Note this differs from "A" in paper, as this A contains diagonal element
-      const auto A = _get_inverse_row(RU, columnIndex, removedColumns);
-      std::cout << "* Affected simplices: ";
-      for ( auto a : A ) { std::cout << a << " "; }
-      std::cout << std::endl;
+      // const auto A = _get_inverse_row(RU, columnIndex, removedColumns);
+
+      const Column A_const = Column(U.get_column(columnIndex), nullptr);
+      Column A = Column(U.get_column(columnIndex), nullptr);
+      auto itAc = std::next(A_const.begin());
+      while (itAc != A_const.end()) {
+        Column cur_row = Column(U.get_column(*itAc), nullptr);
+        cur_row.clear(*itAc);
+        cur_row *= op->get_characteristic() - M::get_element(*itAc);
+        A += cur_row;
+        ++itAc;
+      }
+
+      // std::cout << "* Affected simplices: ";
+      // for ( auto a : A ) { std::cout << a << " "; }
+      // std::cout << std::endl;
       // R.print();
 
       // Construct vector of earliest-highest pivot columns
@@ -121,8 +133,9 @@ class SiRUP_methods {
           auto& itBar = RU.indexToBar_.at(columnIndex);
           itBar->death = nullDeath;
           RU.indexToBar_.try_emplace(itBar->birth, itBar); // Ask Hannah: is this necessary?
+        } else {
+          RU.barcode_.erase(RU.indexToBar_[columnIndex]);
         }
-        RU.barcode_.erase(RU.indexToBar_[columnIndex]);
       // If column has been added to other columns
       } else {
         itA = A.end();
@@ -135,7 +148,7 @@ class SiRUP_methods {
           // if (R.is_zero_column(M::get_row_index(*itA))) { std:: cout << " (is zero)\n";}
           // else { std:: cout << " (is not zero)\n"; }
 
-          // Separate case for zero columns
+          // Separate case for when target is zero column
           if (R.is_zero_column(M::get_row_index(*itA))) {
             itB = std::prev(B.end());
             if (*itB == M::get_row_index(*itA)) {
@@ -158,26 +171,32 @@ class SiRUP_methods {
 
           // Update bars
           if (targetInB) {
-            std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << *itA << std::endl;
-            RU._update_barcode(R.get_pivot(*itB), *itA);
+            // std::cout << "*now birth " << R.get_pivot(*itB) << " has death " << M::get_row_index(*itA) << std::endl;
 
-            // Target is last element of B
+            // Update for addition target, when target is last element of B
             if (std::next(itB) == std::prev(B.end())) {
               // Case 1: target is zero column, so remove bar
               if (targetIsZeroCol) {
                 RU.barcode_.erase(RU.indexToBar_[M::get_row_index(*itA)]);
-                RU.indexToBar_.erase(M::get_row_index(*itA));
+                // RU.indexToBar_.erase(M::get_row_index(*itA));
+              // Case 2: target is nonzero column, so update bar to infinite bar
               } else {
-                // Case 2: target is nonzero column, so update bar to infinite bar
                 auto& itBar = RU.indexToBar_.at(M::get_row_index(*itA));
                 itBar->death = nullDeath;
-                RU.indexToBar_.try_emplace(itBar->birth, itBar); // Ask Hannah: is this necessary?
+                // std::cout << "** last B update: " << *itBar << std::endl;
+                // RU.indexToBar_.try_emplace(itBar->birth, itBar); // Ask Hannah: is this necessary?
               }
             }
+
+            // Update for addition source
+            RU._update_barcode(R.get_pivot(*itB), M::get_row_index(*itA));
+            auto& itBar = RU.indexToBar_.at(R.get_pivot(*itB));
+            RU.indexToBar_[M::get_row_index(*itA)] = itBar;
             targetInB = false;
           }
 
           // Perform addition
+          // std::cout << "*adding " << *itB << " to " << M::get_row_index(*itA) << std::endl;
           R.add_to(*itB, M::get_row_index(*itA));
           U.add_to(M::get_row_index(*itA), *itB);
           itA--;
@@ -220,11 +239,6 @@ class SiRUP_methods {
       ++it;
     }
 
-    // Get rid of unnecessary entries
-    // for (auto i : removedColumns) {
-    //   res.clear(i);
-    // }
-
     // Return result
     return res;
   };
@@ -242,17 +256,17 @@ class SiRUP_methods {
     auto size = R.get_number_of_columns();
     int shift = 0;
 
-    // Swap all in one sweep
+    // Swap all rows in one sweep
     if (removedColumns.size() > 0) {
       auto it_rc = removedColumns.begin();
-      bool at_end = false;
+      bool at_rc_end = false;
       for (int i = *it_rc; i < size; i++) {
-        if (!at_end && *it_rc == i) {
+        if (!at_rc_end && *it_rc == i) {
+          // std::cout << "*index " << i << " was dropped" << "\n";
           shift += 1;
+          it_rc++;
           if (it_rc == removedColumns.end()) {
-            at_end = true;
-          } else {
-            it_rc++;
+            at_rc_end = true;
           }
         } else {
           U.swap_rows(i - shift, i);
@@ -261,7 +275,7 @@ class SiRUP_methods {
       }
     }
 
-    // Erase all in one sweep
+    // Erase all columns and rows in one sweep
     shift = 0;
     for (Index columnIndex : removedColumns) {
       R.erase_empty_column(columnIndex - shift);
@@ -287,16 +301,50 @@ class SiRUP_methods {
   // Step 3: Update barcode and index dictionary
   static void _shift_persistence_indices(Master_RU_matrix& RU, std::set<Index>& removedColumns){
 
+    auto op = RU.operators_;
+    auto R = RU.reducedMatrixR_;
+    auto U = RU.mirrorMatrixU_;
+
+    auto size = R.get_number_of_columns();
+    int shift = 0;
+
+    if (removedColumns.size() > 0) {
+      auto it_rc = removedColumns.begin();
+      bool at_rc_end = false;
+      for (int i = *it_rc; i < size; i++) {
+        if (!at_rc_end && *it_rc == i) {
+          shift += 1;
+          it_rc++;
+          if (it_rc == removedColumns.end()) {
+            at_rc_end = true;
+          }
+        } else {
+
+          // Update barcode_
+          auto& itBar = RU.indexToBar_.at(i);
+          if (i == itBar->birth){
+            // std::cout << "*column " << i << " is positive simplex" << "\n";
+            itBar->birth -= shift;
+          } else {
+            // std::cout << "*column " << i << " is negative simplex" << "\n";
+            itBar->death -= shift;          
+          }
+  
+          // Update indexToBar_
+          RU.indexToBar_.erase(i);
+          RU.indexToBar_.try_emplace(i-shift, itBar); // Ask Hannah: is this necessary?
+        }
+      }      
+    }
+
     // Update 'Barcode barcode_;'
     // Is of type 'std::list<Bar>'
     //  using Bar = Persistence_interval<Dimension, Pos_index>;
     //  using Pos_index = typename PersistenceMatrixOptions::Index; 
     //  Persistence_interval is a stuct with dim, birth, death
 
-
     // Update 'Dictionary indexToBar_;'
     // Is of type 'std::unordered_map<Pos_index, typename Barcode::iterator>'
-
 
     // for (const auto & [ key, value ] : RU.indexToBar_) {
     //   std::cout << key << " : " << (*value).dim << " / " << (*value).birth << " / " << (*value).death << std::endl;

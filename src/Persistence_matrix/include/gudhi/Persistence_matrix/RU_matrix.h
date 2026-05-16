@@ -692,7 +692,6 @@ template <class Master_matrix>
 inline void RU_matrix<Master_matrix>::remove_maximal_cell_sirup(std::vector<Index> removeColumns, bool is_index_updated)
 {
   SiRUP_methods<Master_matrix>::remove_maximal_cell(*this, removeColumns, is_index_updated);
-  // Pair_opt::_update_barcode(3,21);
 }
 
   template <class Master_matrix>
