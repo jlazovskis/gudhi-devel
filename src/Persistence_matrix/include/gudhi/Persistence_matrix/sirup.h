@@ -9,15 +9,6 @@
 namespace Gudhi {
 namespace persistence_matrix {
 
-template <class Matrix_entry, typename Index>
-static Index get_row_index_shifted(Index row_index, auto it_begin, auto it_end) {
-  while (it_begin != it_end && *it_begin < row_index) {
-    row_index--;
-    it_begin++;
-  }
-  return row_index;
-}
-
 template <class Master_matrix>
 class SiRUP_methods {
   using Column = typename Master_matrix::Column;
@@ -26,11 +17,6 @@ class SiRUP_methods {
  private:
   using Master_RU_matrix = typename Master_matrix::Master_RU_matrix;
 
-  // void _update_barcode(Index birthPivot, Index death) {
-  //   if constexpr (Master_matrix::Option_list::has_column_pairings) {
-  //     typename RU_pairing<Master_matrix>::_update_barcode(birthPivot, death);
-  //   }
-  // }
 
  public:
   static void remove_maximal_cell(Master_RU_matrix& RU, std::vector<Index> removeColumns, bool is_index_updated) {
@@ -47,28 +33,15 @@ class SiRUP_methods {
     // std::cout << "**barcode size = " << R->_birth(0) << "\n";
     // std::cout << "--------------------\n";
 
-    // Container for columns already removed. Indexation does not change.
-    std::set<Index> removedColumns;
-
-    // Steps of algorithm implementation
-    _execute_sirup(RU, removeColumns, removedColumns, is_index_updated);
-    _clear_rows_columns(RU, removedColumns, is_index_updated);
-    _shift_persistence_indices(RU, removedColumns);
-
-    // R.print();
-    // U.print();
-  }
-
-  // Step 1: Execute SiRUP
-  static void _execute_sirup(Master_RU_matrix& RU, std::vector<Index> removeColumns, std::set<Index>& removedColumns,
-                             bool is_index_updated) {
     // Shorthand
     auto op = RU.operators_;
     auto R = RU.reducedMatrixR_;
     auto U = RU.mirrorMatrixU_;
     using M = Master_matrix;
     constexpr const Index nullDeath = M::template get_null_value<Index>();
+    std::set<Index> removedColumns;
 
+    // Step 1: Execute SiRUP
     // Iterate over columns requested to remove
     for (int i = 0; i < removeColumns.size(); i++) {
 
@@ -214,45 +187,8 @@ class SiRUP_methods {
       // R.print();
       // U.print();
     }
-  };
 
-  // Part of Step 1: Get inverse row
-  static Column _get_inverse_row(Master_RU_matrix& RU, Index r, std::set<Index>& removedColumns) {
-    // Shorthand
-    auto op = RU.operators_;
-    auto U = RU.mirrorMatrixU_;
-    using M = Master_matrix;
-    using E = typename M::Element;
-
-    // Definitions
-    const Column res_const = Column(U.get_column(r), nullptr);
-    Column res = Column(U.get_column(r), nullptr);
-    auto size = U.get_number_of_columns();
-    auto it = std::next(res_const.begin());
-
-    // Construct inverse
-    while (it != res_const.end()) {
-      Column cur_row = Column(U.get_column(*it), nullptr);
-      cur_row.clear(*it);
-      cur_row *= op->get_characteristic() - M::get_element(*it);
-      res += cur_row;
-      ++it;
-    }
-
-    // Return result
-    return res;
-  };
-
-  // Step 2: Clear the rows and columns
-  static void _clear_rows_columns(Master_RU_matrix& RU, std::set<Index>& removedColumns, bool is_index_updated) {
-    // Remove columns
-    // R.erase_empty_column(columnIndex);
-    // U.erase_empty_column(columnIndex);
-
-    auto op = RU.operators_;
-    auto R = RU.reducedMatrixR_;
-    auto U = RU.mirrorMatrixU_;
-
+    // Step 2: Clear the rows and columns
     auto size = R.get_number_of_columns();
     int shift = 0;
 
@@ -296,17 +232,9 @@ class SiRUP_methods {
     // U.erase_empty_row(size-1);
     // R.print();
     // U.print();
-  };
 
-  // Step 3: Update barcode and index dictionary
-  static void _shift_persistence_indices(Master_RU_matrix& RU, std::set<Index>& removedColumns){
-
-    auto op = RU.operators_;
-    auto R = RU.reducedMatrixR_;
-    auto U = RU.mirrorMatrixU_;
-
-    auto size = R.get_number_of_columns();
-    int shift = 0;
+    // Step 3: Update barcode and index dictionary
+    shift = 0;
 
     if (removedColumns.size() > 0) {
       auto it_rc = removedColumns.begin();
@@ -327,12 +255,13 @@ class SiRUP_methods {
             itBar->birth -= shift;
           } else {
             // std::cout << "*column " << i << " is negative simplex" << "\n";
+            if (itBar->death = nullDeath){std::cout << "BAD" << std::endl;}
             itBar->death -= shift;          
           }
   
-          // Update indexToBar_
-          RU.indexToBar_.erase(i);
-          RU.indexToBar_.try_emplace(i-shift, itBar); // Ask Hannah: is this necessary?
+    //       // Update indexToBar_
+    //       RU.indexToBar_.erase(i);
+    //       RU.indexToBar_.try_emplace(i-shift, itBar); // Ask Hannah: is this necessary?
         }
       }      
     }
