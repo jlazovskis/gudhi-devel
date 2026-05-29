@@ -163,7 +163,6 @@ class SiRUP_methods {
       R.zero_column(columnIndex);
       U.zero_column(columnIndex);
       removedColumns.insert(columnIndex);
-
     }
 
     // Step 2: Clear the rows and columns
@@ -181,7 +180,7 @@ class SiRUP_methods {
           if (it_rc == removedColumns.end()) {
             at_rc_end = true;
           }
-        } else {
+        } else if ( shift > 0) {
           U.swap_rows(i - shift, i);
           R.swap_rows(i - shift, i);
         }
@@ -193,18 +192,24 @@ class SiRUP_methods {
     for (Index columnIndex : removedColumns) {
       R.erase_empty_column(columnIndex - shift);
       U.erase_empty_column(columnIndex - shift);
-      ++shift;
+      shift++;
     }
-
-    std::cout << "here1" << std::endl;
 
     // Step 3: Recompute barcode
     RU.barcode_.clear();
     RU.indexToBar_.clear();
 
-    for (Index i = 0; i < R.get_number_of_columns()-removedColumns.size(); i++) {
+    for (Index i = 0; i < R.get_number_of_columns() - removedColumns.size(); i++) {
       if (!(R.is_zero_column(i))) {
         auto temp = R.get_pivot(i);
+
+        // ERROR CATCH START
+        if (temp > R.get_number_of_columns() - removedColumns.size()) {
+          std::cout << "* hi index at i=" << i << " and piv=" << temp << std::endl;
+          std::cout << "* expected matrix size is " << R.get_number_of_columns() - removedColumns.size() << " rows and cols" << std::endl;
+        }
+        // ERROR CATCH END
+
         auto& barIt = RU.indexToBar_.at(R.get_pivot(i));
         barIt->death = i;
         RU.indexToBar_.try_emplace(i, barIt);
@@ -213,6 +218,12 @@ class SiRUP_methods {
         RU.barcode_.back().death = nullDeath;
       }
     }
+
+    // DEBUG START
+    // std::cout << "------------------------------------------\n";
+    // R.print();
+    // U.print();
+    // DEBUG END
 
   };
 };
