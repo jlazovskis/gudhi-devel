@@ -71,10 +71,9 @@ class SiRUP_methods {
     constexpr const Index nullDeath = M::template get_null_value<Index>();
     std::set<Index> removedColumns;
 
-    // Step 1: Execute SiRUP
-    // Iterate over columns requested to remove
+    // Reindex and reorder
+    std::vector<Index> removeColumns_ordered;
     for (int i = 0; i < removeColumns.size(); i++) {
-      // Reindex if necessary
       Index columnIndex = removeColumns[i];
       if (is_index_updated && removedColumns.size() > 0) {
         for (auto it_rc = removedColumns.begin(); it_rc != removedColumns.end(); ++it_rc) {
@@ -83,6 +82,13 @@ class SiRUP_methods {
           }
         }
       }
+      removeColumns_ordered.push_back(columnIndex);
+    }
+
+    // Step 1: Execute SiRUP
+    // Iterate over columns requested to remove
+    for (int i = 0; i < removeColumns_ordered.size(); i++) {
+      Index columnIndex = removeColumns_ordered[i];
 
       // Get row of V (from its inverse U)
       // Note this differs from "A" in paper, as this A contains diagonal element
@@ -202,6 +208,10 @@ class SiRUP_methods {
     for (Index i = 0; i < R.get_number_of_columns() - removedColumns.size(); i++) {
       if (!(R.is_zero_column(i))) {
         auto temp = R.get_pivot(i);
+
+        // DEBUG START
+        std::cout << "* i=" << i << " and piv=" << temp << std::endl;
+        // DEBUG END
 
         // ERROR CATCH START
         if (temp > R.get_number_of_columns() - removedColumns.size()) {
