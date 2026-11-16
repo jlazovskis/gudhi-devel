@@ -1,10 +1,10 @@
 #ifndef SIRUP_METHODS_H
 #define SIRUP_METHODS_H
 
-#include <gudhi/persistence_matrix_options.h>
 #include <gudhi/Persistence_matrix/RU_matrix.h>
-#include <gudhi/Persistence_matrix/ru_pairing.h>
 #include <gudhi/Persistence_matrix/columns/entry_types.h>
+#include <gudhi/Persistence_matrix/ru_pairing.h>
+#include <gudhi/persistence_matrix_options.h>
 
 namespace Gudhi {
 namespace persistence_matrix {
@@ -18,47 +18,6 @@ class SiRUP_methods {
   using Master_RU_matrix = typename Master_matrix::Master_RU_matrix;
 
  public:
-  static void TEST_remove_maximal_cell(Master_RU_matrix& RU, std::vector<Index> removeColumns, bool is_index_updated) {
-    auto R = RU.reducedMatrixR_;
-    auto U = RU.mirrorMatrixU_;
-
-    std::cout << "*num cols: " << R.matrix_.size() << std::endl;
-
-    auto size = R.get_number_of_columns();
-    R.print();
-    U.print();
-
-    R.zero_column(removeColumns[0]);
-    U.zero_column(removeColumns[0]);
-    R.erase_empty_column(removeColumns[0]);
-    U.erase_empty_column(removeColumns[0]);
-
-    for (int i = removeColumns[0]; i < size - 1; i++) {
-      U.swap_rows(i, i + 1);
-      R.swap_rows(i, i + 1);
-    }
-
-    std::cout << "--------------------------------\n\n";
-    R.print();
-    U.print();
-
-    RU.barcode_.clear();
-    RU.indexToBar_.clear();
-
-    std::cout << "*num cols: " << R.matrix_.size() << std::endl;
-
-    for (Index i = 0; i < R.get_number_of_columns(); i++) {
-      std::cout << "*col " << i << ": ";
-      if (!(R.is_zero_column(i))) {
-        std::cout << "pivot on row " << R.get_pivot(i) << std::endl;
-        RU._update_barcode(R.get_pivot(i), i);
-      } else {
-        std::cout << "zero col" << std::endl;
-        RU._add_bar(RU.get_column_dimension(i), i);
-      }
-    }
-  }
-
   static void remove_maximal_cell(Master_RU_matrix& RU, std::vector<Index> removeColumns, bool is_index_updated) {
     static_assert(Master_matrix::Option_list::has_removable_columns,
                   "'remove_maximal_cell' is not implemented for the chosen options.");
@@ -71,27 +30,59 @@ class SiRUP_methods {
     constexpr const Index nullDeath = M::template get_null_value<Index>();
     std::set<Index> removedColumns;
 
-    // Reindex and reorder
+    // DEBUG START
+    // std::cout << "* removeColumns" << std::endl;
+    // for (auto it_rc = removeColumns.begin(); it_rc != removeColumns.end();
+    //     ++it_rc) {
+    //     std::cout << "* i=" << *it_rc << std::endl;
+    // }
+    // DEBUG END
+
+    // Step 0: Reindex and reorder
+    // Ensure indexing is absolute
     std::vector<Index> removeColumns_ordered;
     for (int i = 0; i < removeColumns.size(); i++) {
       Index columnIndex = removeColumns[i];
-      if (is_index_updated && removedColumns.size() > 0) {
-        for (auto it_rc = removedColumns.begin(); it_rc != removedColumns.end(); ++it_rc) {
-          if (*it_rc <= columnIndex) {
+      if (is_index_updated) {
+        for (int j = 0; j < i; j++) {
+          if (removeColumns[j] <= columnIndex) {
             columnIndex += 1;
           }
         }
       }
+      std::cout << " * " << removeColumns[i] << " -> " << columnIndex << std::endl;
       removeColumns_ordered.push_back(columnIndex);
     }
+    // Ensure highest dimensions first, earliest indices first
+    std::sort(removeColumns_ordered.begin(), removeColumns_ordered.end(), [&RU](const Index& a, const Index& b) {
+      if (RU.get_column_dimension(a) == RU.get_column_dimension(b)) {
+        return a < b;
+      } else {
+        return RU.get_column_dimension(a) > RU.get_column_dimension(b);
+      }
+    });
+
+    // DEBUG START
+    // std::cout << "* removedColumns_ordered" << std::endl;
+    // for (auto it_rc = removeColumns_ordered.begin();
+    //     it_rc != removeColumns_ordered.end();
+    //     ++it_rc) {
+    //     std::cout << "* i=" << *it_rc << std::endl;
+    // }
+    // DEBUG END
 
     // Step 1: Execute SiRUP
     // Iterate over columns requested to remove
     for (int i = 0; i < removeColumns_ordered.size(); i++) {
       Index columnIndex = removeColumns_ordered[i];
 
+      // DEBUG START
+      std::cout << " * i= " << columnIndex << std::endl;
+      // DEBUG END
+
       // Get row of V (from its inverse U)
-      // Note this differs from "A" in paper, as this A contains diagonal element
+      // Note this differs from "A" in paper, as this A contains diagonal
+      // element
       const Column A_const = Column(U.get_column(columnIndex), nullptr);
       Column A = Column(U.get_column(columnIndex), nullptr);
       auto itAc = std::next(A_const.begin());
@@ -124,7 +115,8 @@ class SiRUP_methods {
         if (!R.is_zero_column(columnIndex)) {
           auto& itBar = RU.indexToBar_.at(columnIndex);
           itBar->death = nullDeath;
-          RU.indexToBar_.try_emplace(itBar->birth, itBar);  // Ask Hannah: is this necessary?
+          RU.indexToBar_.try_emplace(itBar->birth,
+                                     itBar);  // Ask Hannah: is this necessary?
         } else {
           RU.barcode_.erase(RU.indexToBar_[columnIndex]);
         }
@@ -186,7 +178,7 @@ class SiRUP_methods {
           if (it_rc == removedColumns.end()) {
             at_rc_end = true;
           }
-        } else if ( shift > 0) {
+        } else if (shift > 0) {
           U.swap_rows(i - shift, i);
           R.swap_rows(i - shift, i);
         }
@@ -210,13 +202,14 @@ class SiRUP_methods {
         auto temp = R.get_pivot(i);
 
         // DEBUG START
-        std::cout << "* i=" << i << " and piv=" << temp << std::endl;
+        // std::cout << "* i=" << i << " and piv=" << temp << std::endl;
         // DEBUG END
 
         // ERROR CATCH START
         if (temp > R.get_number_of_columns() - removedColumns.size()) {
           std::cout << "* hi index at i=" << i << " and piv=" << temp << std::endl;
-          std::cout << "* expected matrix size is " << R.get_number_of_columns() - removedColumns.size() << " rows and cols" << std::endl;
+          std::cout << "* expected matrix size is " << R.get_number_of_columns() - removedColumns.size()
+                    << " rows and cols" << std::endl;
         }
         // ERROR CATCH END
 
@@ -234,7 +227,6 @@ class SiRUP_methods {
     // R.print();
     // U.print();
     // DEBUG END
-
   };
 };
 
