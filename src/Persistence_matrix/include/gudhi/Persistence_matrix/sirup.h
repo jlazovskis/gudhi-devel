@@ -16,6 +16,36 @@ class SiRUP_methods {
 
  private:
   using Master_RU_matrix = typename Master_matrix::Master_RU_matrix;
+  class binary_indexed_tree {
+   private:
+    Index n;
+    std::vector<Index> tree;
+
+   public:
+    binary_indexed_tree(Index n) : n(n), tree(n + 1, 0) {
+      for (Index i = 1; i <= n; ++i) {
+        add(i, 1);
+      }
+    }
+    void add(Index i, Index diff) {
+      while (i <= n) {
+        tree[i] += diff;
+        i += i & -i;
+      }
+    }
+    void remove(Index k) { add(k + 1, -1); }
+    Index find(Index k) {
+      Index pos = 0;
+      for (Index bit = 1 << 30; bit > 0; bit >>= 1) {
+        Index next = pos + bit;
+        if (next <= n && tree[next] <= k) {
+          pos = next;
+          k -= tree[next];
+        }
+      }
+      return pos;
+    }
+  };
 
  public:
   static void remove_maximal_cell(Master_RU_matrix& RU, std::vector<Index> removeColumns, bool is_index_updated) {
@@ -27,8 +57,12 @@ class SiRUP_methods {
     auto R = RU.reducedMatrixR_;
     auto U = RU.mirrorMatrixU_;
     using M = Master_matrix;
-    constexpr const Index nullDeath = M::template get_null_value<Index>();
     std::set<Index> removedColumns;
+
+    // Constant values
+    constexpr const Index nullDeath = M::template get_null_value<Index>();
+    const auto size_input = R.get_number_of_columns();
+    const auto size_output = R.get_number_of_columns() - removeColumns.size();
 
     // DEBUG START
     // std::cout << "* removeColumns" << std::endl;
@@ -41,18 +75,23 @@ class SiRUP_methods {
     // Step 0: Reindex and reorder
     // Ensure indexing is absolute
     std::vector<Index> removeColumns_ordered;
-    for (int i = 0; i < removeColumns.size(); i++) {
-      Index columnIndex = removeColumns[i];
-      if (is_index_updated) {
-        for (int j = 0; j < i; j++) {
-          if (removeColumns[j] <= columnIndex) {
-            columnIndex += 1;
-          }
+    if (is_index_updated) {
+      Index maxindex = removeColumns[0];
+      for (int i = 1; i < removeColumns.size(); i++) {
+        if (removeColumns[i] > maxindex) {
+          maxindex = removeColumns[i];
         }
       }
-      std::cout << " * " << removeColumns[i] << " -> " << columnIndex << std::endl;
-      removeColumns_ordered.push_back(columnIndex);
-    }
+      binary_indexed_tree bit = binary_indexed_tree(maxindex + removeColumns.size() + 1);
+      for (Index k : removeColumns) {
+        Index k_original = bit.find(k);
+        removeColumns_ordered.push_back(k_original);
+        bit.remove(k_original);
+      }
+    } else {
+      removeColumns_ordered = removeColumns;
+    };
+
     // Ensure highest dimensions first, earliest indices first
     std::sort(removeColumns_ordered.begin(), removeColumns_ordered.end(), [&RU](const Index& a, const Index& b) {
       if (RU.get_column_dimension(a) == RU.get_column_dimension(b)) {
@@ -63,12 +102,14 @@ class SiRUP_methods {
     });
 
     // DEBUG START
-    // std::cout << "* removedColumns_ordered" << std::endl;
-    // for (auto it_rc = removeColumns_ordered.begin();
-    //     it_rc != removeColumns_ordered.end();
-    //     ++it_rc) {
-    //     std::cout << "* i=" << *it_rc << std::endl;
-    // }
+    std::cout << "* removedColumns_ordered" << std::endl;
+    for (auto it_rc = removeColumns_ordered.begin();
+        it_rc != removeColumns_ordered.end();
+        ++it_rc) {
+        std::cout << *it_rc << " (" << RU.get_column_dimension(*it_rc) << ") ";
+        // std::cout << *it_rc << std::endl;
+    }
+    std::cout << std::endl;
     // DEBUG END
 
     // Step 1: Execute SiRUP
@@ -77,7 +118,7 @@ class SiRUP_methods {
       Index columnIndex = removeColumns_ordered[i];
 
       // DEBUG START
-      std::cout << " * i= " << columnIndex << std::endl;
+      // std::cout << " * i= " << columnIndex << std::endl;
       // DEBUG END
 
       // Get row of V (from its inverse U)
@@ -120,7 +161,7 @@ class SiRUP_methods {
         } else {
           RU.barcode_.erase(RU.indexToBar_[columnIndex]);
         }
-        // If column has been added to other columns
+      // If column has been added to other columns
       } else {
         itA = A.end();
         itA--;
@@ -164,14 +205,13 @@ class SiRUP_methods {
     }
 
     // Step 2: Clear the rows and columns
-    auto size = R.get_number_of_columns();
     int shift = 0;
 
     // Swap all rows in one sweep
     if (removedColumns.size() > 0) {
       auto it_rc = removedColumns.begin();
       bool at_rc_end = false;
-      for (int i = *it_rc; i < size; i++) {
+      for (int i = *it_rc; i < size_input; i++) {
         if (!at_rc_end && *it_rc == i) {
           shift += 1;
           it_rc++;
@@ -193,11 +233,15 @@ class SiRUP_methods {
       shift++;
     }
 
+    // DEBUG START
+    std::cout << "* From " << size_input << "x" << size_input << " to " << size_output << "x" <<  size_output << std::endl;
+     // DEBUG END
+
     // Step 3: Recompute barcode
     RU.barcode_.clear();
     RU.indexToBar_.clear();
 
-    for (Index i = 0; i < R.get_number_of_columns() - removedColumns.size(); i++) {
+    for (Index i = 0; i < size_output; i++) {
       if (!(R.is_zero_column(i))) {
         auto temp = R.get_pivot(i);
 
@@ -206,9 +250,9 @@ class SiRUP_methods {
         // DEBUG END
 
         // ERROR CATCH START
-        if (temp > R.get_number_of_columns() - removedColumns.size()) {
+        if (temp > size_output) {
           std::cout << "* hi index at i=" << i << " and piv=" << temp << std::endl;
-          std::cout << "* expected matrix size is " << R.get_number_of_columns() - removedColumns.size()
+          std::cout << "* expected matrix size is " << size_output
                     << " rows and cols" << std::endl;
         }
         // ERROR CATCH END
